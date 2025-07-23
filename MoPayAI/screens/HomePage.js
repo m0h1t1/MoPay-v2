@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Modal, TextInput, ScrollView, Alert } from 'react-native';
+
 
 const categories = [
   { name: 'Restaurants', icon: '🍽️' },
@@ -88,7 +89,7 @@ export default function HomePage({ user }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer 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`,
+          'Authorization': `Bearer token here`,
         },
         body: JSON.stringify({
           model: 'gpt-4o-mini',
