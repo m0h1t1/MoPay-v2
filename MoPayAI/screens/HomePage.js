@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Modal, TextInput, ScrollView, Alert } from 'react-native';
 
-
 const categories = [
   { name: 'Restaurants', icon: '🍽️' },
   { name: 'Groceries', icon: '🛒' },
