@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, Alert, ScrollView } from 'react-native';
 import DropDownPicker from 'react-native-dropdown-picker';
 import creditCards from '../credit_cards.json';
 
-export default function AddCardPage() {
+export default function AddCardPage({ user, jwt }) {
   const [open, setOpen] = useState(false);
   const [selectedCard, setSelectedCard] = useState(null);
   const [items, setItems] = useState([
@@ -13,12 +13,64 @@ export default function AddCardPage() {
   const [modalVisible, setModalVisible] = useState(false);
   const [customCard, setCustomCard] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [userCards, setUserCards] = useState([]);
+  const [loadingCards, setLoadingCards] = useState(false);
 
-  const userCards = [
-    'Chase Sapphire Preferred',
-    'Citi Double Cash',
-    'Amex Gold',
-  ];
+  // Fetch user's cards on mount or when user changes
+  React.useEffect(() => {
+    if (!user || !user.id) {
+      setUserCards([]);
+      return;
+    }
+    setLoadingCards(true);
+    fetch(`http://localhost:3000/cards/${user.id}`)
+      .then(res => res.json())
+      .then(cards => {
+        setUserCards(cards);
+      })
+      .catch(() => setUserCards([]))
+      .finally(() => setLoadingCards(false));
+  }, [user]);
+
+  // Update dropdown items whenever userCards changes
+  useEffect(() => {
+    // Get a set of card names the user already has
+    const userCardNames = new Set(userCards.map(card => card.card_name));
+    // Filter out cards the user already has
+    const filtered = creditCards.filter(card => !userCardNames.has(card));
+    setItems([
+      { label: 'Select card to add...', value: null, disabled: true },
+      ...filtered.map(card => ({ label: card, value: card })),
+    ]);
+    // Optionally, clear selection if the selected card was just added
+    if (selectedCard && userCardNames.has(selectedCard)) {
+      setSelectedCard(null);
+    }
+  }, [userCards]);
+
+  const handleDeleteCard = (cardId) => {
+    Alert.alert(
+      'Remove Card',
+      'Are you sure you want to remove this card?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Yes',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await fetch(`http://localhost:3000/cards/${cardId}`, {
+                method: 'DELETE',
+              });
+              setUserCards(prev => prev.filter(card => card.id !== cardId));
+            } catch (e) {
+              Alert.alert('Error', 'Could not delete card.');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -46,25 +98,57 @@ export default function AddCardPage() {
             textStyle={styles.pickerText}
           />
         </View>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.addButton, !selectedCard && styles.addButtonDisabled]}
-          activeOpacity={0.8} 
-          disabled={!selectedCard}
+          activeOpacity={0.8}
+          disabled={!selectedCard || submitting}
+          onPress={async () => {
+            if (!user || !user.id || !selectedCard) return;
+            setSubmitting(true);
+            try {
+              const res = await fetch('http://localhost:3000/cards/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: user.id, card_name: selectedCard }),
+              });
+              if (!res.ok) throw new Error('Failed to add card');
+              // Refresh cards list
+              const cardsRes = await fetch(`http://localhost:3000/cards/${user.id}`);
+              const cards = await cardsRes.json();
+              setUserCards(cards);
+              setSelectedCard(null);
+              Alert.alert('Success', 'Card added!');
+            } catch (e) {
+              Alert.alert('Error', 'Could not add card.');
+            } finally {
+              setSubmitting(false);
+            }
+          }}
         >
-          <Text style={styles.addButtonText}>Add Card</Text>
+          <Text style={styles.addButtonText}>{submitting ? 'Adding...' : 'Add Card'}</Text>
         </TouchableOpacity>
 
         {/* My Cards Section */}
         <View style={styles.myCardsSection}>
           <Text style={styles.myCardsTitle}>My Cards</Text>
-          {userCards.length === 0 ? (
+          {loadingCards ? (
+            <Text style={styles.noCardsText}>Loading...</Text>
+          ) : userCards.length === 0 ? (
             <Text style={styles.noCardsText}>You have no cards yet.</Text>
           ) : (
-            userCards.map((card, idx) => (
-              <View key={card + idx} style={styles.cardItem}>
-                <Text style={styles.cardItemText}>{card}</Text>
-              </View>
-            ))
+            <ScrollView style={styles.cardsScroll} contentContainerStyle={{ paddingBottom: 8 }}>
+              {userCards.map((card, idx) => (
+                <View key={card.id || card.card_name || idx} style={styles.cardItemRow}>
+                  <Text style={styles.cardItemText}>{card.card_name || card}</Text>
+                  <TouchableOpacity
+                    style={styles.trashButton}
+                    onPress={() => handleDeleteCard(card.id)}
+                  >
+                    <Text style={styles.trashIcon}>🗑️</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
           )}
         </View>
       </View>
@@ -323,5 +407,27 @@ const styles = StyleSheet.create({
   cardItemText: {
     fontSize: 15,
     color: '#222',
+  },
+  cardItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 7,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginBottom: 6,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    justifyContent: 'space-between',
+  },
+  trashButton: {
+    marginLeft: 12,
+    padding: 4,
+  },
+  trashIcon: {
+    fontSize: 18,
+  },
+  cardsScroll: {
+    maxHeight: 220,
   },
 }); 

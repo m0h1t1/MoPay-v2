@@ -65,7 +65,9 @@ export default function App() {
         <Tab.Screen name="Home">
           {() => <HomePage jwt={jwt} user={user} />}
         </Tab.Screen>
-        <Tab.Screen name="AddCard" component={AddCardPage} />
+        <Tab.Screen name="AddCard">
+          {() => <AddCardPage user={user} jwt={jwt} />}
+        </Tab.Screen>
         <Tab.Screen name="Profile">
           {() => <ProfileScreen user={user} onLogout={() => setJwt(null)} />}
         </Tab.Screen>

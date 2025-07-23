@@ -7,6 +7,8 @@ import { JwtStrategy } from './auth/jwt.strategy';
 import { AuthModule } from './auth/auth.module';
 import { SuggestCardModule } from './suggest-card/suggest-card.module';
 import { CardAgentModule } from './agents/CardAgent.module';
+import { CardsModule } from './cards/cards.module';
+import { Card } from './cards/cards.entity';
 
 @Module({
   imports: [
@@ -18,13 +20,14 @@ import { CardAgentModule } from './agents/CardAgent.module';
       username: process.env.DATABASE_USER,
       password: process.env.DATABASE_PASSWORD,
       database: process.env.DATABASE_NAME,
-      entities: [User],
+      entities: [User, Card],
       synchronize: true, // ❗ Only use in dev
     }),
     UsersModule,
     AuthModule,
     SuggestCardModule,
     CardAgentModule,
+    CardsModule,
   ],
   providers: [JwtStrategy],
 })
